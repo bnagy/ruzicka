@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 from itertools import permutations
-
+from typing import Sequence
 import numpy as np
 
 from .evaluation import pan_metrics
 
 
-def rescale(value, orig_min, orig_max, new_min, new_max):
+def rescale(value, orig_min, orig_max, new_min, new_max: float) -> float:
     """
 
     Rescales a `value` in the old range defined by
@@ -38,18 +37,20 @@ def rescale(value, orig_min, orig_max, new_min, new_max):
     """
 
     orig_span = orig_max - orig_min
+    if orig_span <= 0.0:
+        raise ValueError(
+            f"Bad span for rescale (original span {orig_min:.2f} - {orig_max:.2f})"
+        )
     new_span = new_max - new_min
 
-    try:
-        scaled_value = float(value - orig_min) / float(orig_span)
-    except ZeroDivisionError:
-        orig_span += 1e-6
-        scaled_value = float(value - orig_min) / float(orig_span)
+    scaled_value = (value - orig_min) / orig_span
 
     return new_min + (scaled_value * new_span)
 
 
-def correct_scores(scores, p1=0.25, p2=0.75):
+def correct_scores(
+    scores: Sequence[float], p1: float = 0.25, p2: float = 0.75
+) -> list[float]:
     """
 
     Rescales a list of scores (originally between 0 and 1)
@@ -74,7 +75,7 @@ def correct_scores(scores, p1=0.25, p2=0.75):
 
     """
     new_scores = []
-    for score in list(scores):
+    for score in scores:
         if score <= p1:
             new_scores.append(rescale(score, min(scores), max(scores), 0.0, p1))
         elif score >= p2:
@@ -97,22 +98,23 @@ class ScoreShifter:
 
     """
 
-    def __init__(self, step_size=0.01):
+    def __init__(self, step_size: float = 0.01):
         """
         Contructor.
 
         Parameters
         ----------
-        step_size: float, default=0.5
+        step_size: float, default=0.01
             The step size between the different values of
             `p1` and `p2` to be tested in the grid search.
 
         """
-        self.optimal_p1 = None
-        self.optimal_p2 = None
+        self.optimal_p1: float
+        self.optimal_p2: float
         self.step_size = step_size
+        self.fitted: bool = False
 
-    def fit(self, predicted_scores, ground_truth_scores):
+    def fit(self, predicted_scores, ground_truth_scores: Sequence[float]):
         """
         Fits the score shifter on the (development) scores for
         a data set, by searching the optimal `p1` and `p2` (in terms
@@ -145,7 +147,7 @@ class ScoreShifter:
 
             if p1 <= p2:  # ensure p1 <= p2!
                 corrected_scores = correct_scores(predicted_scores, p1=p1, p2=p2)
-                acc_score, auc_score, c_at_1_score = pan_metrics(
+                _, auc_score, c_at_1_score = pan_metrics(
                     prediction_scores=corrected_scores,
                     ground_truth_scores=ground_truth_scores,
                 )
@@ -166,9 +168,10 @@ class ScoreShifter:
         print("AUC for optimal combo:", auc_scores[opt_p1_idx][opt_p2_idx])
         print("c@1 for optimal combo:", c_at_1_scores[opt_p1_idx][opt_p2_idx])
 
+        self.fitted = True
         return self
 
-    def transform(self, scores):
+    def transform(self, scores: Sequence[float]) -> list[float]:
         """
         Shifts the probabilities of a (new) problem series, through
         applying the score_shifter with the previously set `p1` and `p2`.
@@ -184,5 +187,7 @@ class ScoreShifter:
             The shifted scores.
 
         """
+        if not self.fitted:
+            raise RuntimeError("Must fit before transforming.")
 
-        return correct_scores(scores=scores, p1=self.optimal_p1, p2=self.optimal_p2)
+        return correct_scores(scores, p1=self.optimal_p1, p2=self.optimal_p2)

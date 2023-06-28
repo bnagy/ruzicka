@@ -20,6 +20,8 @@ from __future__ import print_function
 import random
 
 import numpy as np
+import numpy.typing as npt
+
 from sklearn.neighbors import NearestCentroid
 
 # import the pairwise distance functions:
@@ -58,7 +60,6 @@ class Order2Verifier:
         nb_bootstrap_iter=0,
         random_state=1066,
         rnd_prop=0.5,
-        device="cpu",
     ):
         """
         Constructor.
@@ -90,13 +91,6 @@ class Order2Verifier:
         rnd_prop: scalar, default=.5
             Float specifying the number of features to be
             randomly sampled in each iteration.
-
-        device: str, default='cpu'
-            Indicating whether we use the theano- or JIT-
-            accelerated distance computations. (For the
-            paper, we eventually used the numba-version
-            throughout.)
-
         """
 
         # some sanity checks:
@@ -110,12 +104,10 @@ class Order2Verifier:
         self.base = base
         self.nb_bootstrap_iter = nb_bootstrap_iter
         self.rnd_prop = rnd_prop
-
-        # check with we use JIT- or theano-metrics:
-        if device == "cpu":
-            self.metric_fn = CPU_METRICS[metric]
-        elif device == "gpu":
-            self.metric_fn = GPU_METRICS[metric]
+        self.train_X: npt.NDArray
+        self.train_y: npt.NDArray
+        
+        self.metric_fn = CPU_METRICS[metric]
 
     def fit(self, X, y):
         """
@@ -148,7 +140,7 @@ class Order2Verifier:
             self.train_y = y
 
         elif self.base == "profile":
-            self.train_X = NearestCentroid().fit(X, y).centroids_  # mean centroids
+            self.train_X = np.array(NearestCentroid().fit(X, y).centroids_)  # mean centroids
             self.train_y = np.array(range(self.train_X.shape[0]))
 
     def dist_closest_target(self, test_vector, target_int, rnd_feature_idxs=[]):

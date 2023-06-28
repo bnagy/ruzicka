@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-import os
-import sys
 
 import scipy.sparse as sp
 import numpy as np
@@ -169,7 +167,8 @@ class Vectorizer:
             "min_df": min_df,
             "preprocessor": None,
             "ngram_range": (ngram_size, ngram_size),
-            "lowercase": False,
+            "lowercase": lowercase,
+            "vocabulary": vocabulary,
             "decode_error": "ignore",
             "stop_words": ignore,
         }

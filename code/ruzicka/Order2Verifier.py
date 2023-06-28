@@ -16,18 +16,18 @@ described in e.g.:
 
 """
 
-from __future__ import print_function
 import random
 
 import numpy as np
 import numpy.typing as npt
+from typing import Sequence, Callable
 
 from sklearn.neighbors import NearestCentroid
 
 # import the pairwise distance functions:
 from .test_metrics import minmax, manhattan, euclidean, common_ngrams, cosine
 
-CPU_METRICS = {
+CPU_METRICS: dict[str, Callable] = {
     "manhattan": manhattan,
     "euclidean": euclidean,
     "minmax": minmax,
@@ -55,11 +55,11 @@ class Order2Verifier:
 
     def __init__(
         self,
-        metric="manhattan",
-        base="profile",
-        nb_bootstrap_iter=0,
-        random_state=1066,
-        rnd_prop=0.5,
+        metric: str = "manhattan",
+        base: str = "profile",
+        nb_bootstrap_iter: int = 0,
+        random_state: int = 1066,
+        rnd_prop: float = 0.5,
     ):
         """
         Constructor.
@@ -106,10 +106,15 @@ class Order2Verifier:
         self.rnd_prop = rnd_prop
         self.train_X: npt.NDArray
         self.train_y: npt.NDArray
-        
-        self.metric_fn = CPU_METRICS[metric]
 
-    def fit(self, X, y):
+        try:
+            self.metric_fn = CPU_METRICS[metric]
+        except KeyError:
+            raise ValueError(
+                f"Unknown metric {metric}. Valid are: {list(CPU_METRICS.keys())}"
+            )
+
+    def fit(self, X: Sequence[Sequence[float]], y: Sequence[int]):
         """
         Runs very light, memory-based like fitting Method
         which primarily stores `X` and `y` in memory. In the
@@ -136,14 +141,21 @@ class Order2Verifier:
         """
 
         if self.base == "instance":
-            self.train_X = X
-            self.train_y = y
+            self.train_X = np.array(X)
+            self.train_y = np.array(y)
 
         elif self.base == "profile":
-            self.train_X = np.array(NearestCentroid().fit(X, y).centroids_)  # mean centroids
+            self.train_X = np.array(
+                NearestCentroid().fit(X, y).centroids_
+            )  # mean centroids
             self.train_y = np.array(range(self.train_X.shape[0]))
 
-    def dist_closest_target(self, test_vector, target_int, rnd_feature_idxs=[]):
+    def dist_closest_target(
+        self,
+        test_vector: Sequence[float],
+        target_int: int,
+        rnd_feature_idxs: npt.NDArray[np.int32] = np.array([]),
+    ) -> float:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -181,21 +193,26 @@ class Order2Verifier:
 
         # use entire feature space if necessary:
         if len(rnd_feature_idxs) == 0:  # use entire feature space
-            rnd_feature_idxs = range(test_vector.shape[0])
+            rnd_feature_idxs = np.array(range(len(test_vector)))
 
         # calculate distance to nearest neighbour for the
         # target author (which potentially has only 1 item):
-        distances = []
+        distance = float("inf")
         for idx in range(len(self.train_y)):
             if self.train_y[idx] == target_int:
-                distances.append(
-                    self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-                )
-        return min(distances)
+                d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
+                if d < distance:
+                    distance = d
+
+        return distance
 
     def dist_closest_non_target(
-        self, test_vector, target_int, rnd_feature_idxs=[], nb_imposters=None
-    ):
+        self,
+        test_vector: Sequence[float],
+        target_int: int,
+        nb_imposters: int = 0,
+        rnd_feature_idxs: npt.NDArray[np.int32] = np.array([]),
+    ) -> float:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -220,15 +237,15 @@ class Order2Verifier:
             author is assumed to have at least one document in the
             training data.
 
-        rnd_feature_idxs : list of ints, default='all'
-            Integer list, specifying the indices of the feature
-            values which are should in the distance calculation.
-            If unspecified, we use the entire feature space.
-
-        nb_imposters : int, default=None
+        nb_imposters : int, default=0
             Specifies the number of imposter or distractor documents
             which are randomly sampled from the training documents
             which were not written by the target author.
+
+        rnd_feature_idxs : list of ints, default=[]
+            Integer list, specifying the indices of the feature
+            values which are should in the distance calculation.
+            If empty, we use the entire feature space.
 
         Returns
         ----------
@@ -241,24 +258,29 @@ class Order2Verifier:
 
         # use entire feature space if necessary:
         if len(rnd_feature_idxs) == 0:
-            rnd_feature_idxs = range(test_vector.shape[0])
+            rnd_feature_idxs = np.array(range(len(test_vector)))
 
         # calculate distance to nearest neighbour for any
         # author whom is NOT the target author
-        distances = []
         non_target_idxs = [
             i for i in range(len(self.train_y)) if self.train_y[i] != target_int
         ]
 
         # randomly pick a subset of imposters:
         random.shuffle(non_target_idxs)
+        distance = float("inf")
         for idx in non_target_idxs[:nb_imposters]:
-            distances.append(
-                self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-            )
-        return min(distances)
+            d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
+            if d < distance:
+                distance = d
+        return distance
 
-    def predict_proba(self, test_X, test_y, nb_imposters=0):
+    def predict_proba(
+        self,
+        test_X: Sequence[Sequence[float]],
+        test_y: Sequence[int],
+        nb_imposters: int = 0,
+    ) -> npt.NDArray[np.float32]:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -298,7 +320,7 @@ class Order2Verifier:
             of the individual test_documents has to be verified. All
             authors in test_y *must* be present in the training data.
 
-        nb_imposters : int, default=None
+        nb_imposters : int, default=0
             Specifies the number of imposter or distractor documents
             which are randomly sampled from the training documents
             which were not written by the target author.
@@ -326,10 +348,10 @@ class Order2Verifier:
         if not self.nb_bootstrap_iter:  # naive verification:
             for test_vector, target_int in zip(test_X, test_y):
                 target_dist = self.dist_closest_target(
-                    test_vector=test_vector, target_int=target_int
+                    test_vector, target_int
                 )
                 non_target_dist = self.dist_closest_non_target(
-                    test_vector=test_vector, target_int=target_int
+                    test_vector, target_int
                 )
                 if target_dist < non_target_dist:
                     distances.append(1.0)
@@ -353,15 +375,15 @@ class Order2Verifier:
                         size=int(self.train_X.shape[1] * self.rnd_prop),
                     )
                     target_dist = self.dist_closest_target(
-                        test_vector=test_vector,
-                        target_int=target_int,
-                        rnd_feature_idxs=rnd_feature_idxs,
+                        test_vector,
+                        target_int,
+                        rnd_feature_idxs,
                     )
                     non_target_dist = self.dist_closest_non_target(
-                        test_vector=test_vector,
-                        target_int=target_int,
-                        nb_imposters=nb_imposters,
-                        rnd_feature_idxs=rnd_feature_idxs,
+                        test_vector,
+                        target_int,
+                        nb_imposters,
+                        rnd_feature_idxs,
                     )
                     if target_dist < non_target_dist:
                         bootstrap_score += 1.0 / self.nb_bootstrap_iter

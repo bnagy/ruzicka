@@ -24,15 +24,6 @@ import numpy as np
 from sklearn.neighbors import NearestCentroid
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 
-# legacy: set metrics for using the theano functions
-from . import tensor
-
-GPU_METRICS = {
-    "manhattan": tensor.get_manhattan_fn(),
-    "euclidean": tensor.get_euclidean_fn(),
-    "minmax": tensor.get_minmax_fn(),
-}
-
 # import the pairwise distance functions:
 from .test_metrics import minmax, manhattan, euclidean, common_ngrams, cosine
 

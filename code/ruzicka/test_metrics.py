@@ -17,8 +17,8 @@ import numba
 TARGET = "cpu"
 
 
-@numba.jit
-def minmax(x, y: list[float], rnd_feature_idxs: list[int] = []):
+@numba.jit(nopython=True)
+def minmax(x, y: list[float], rnd_feature_idxs: list[int]):
     """
     Calculates the pairwise "minmax" distance between
     two vectors, but limited to the `rnd_feature_idxs`
@@ -68,7 +68,7 @@ def minmax(x, y: list[float], rnd_feature_idxs: list[int] = []):
 # TODO: below here updated to @numba.jit without checking anything!
 
 
-@numba.jit
+@numba.jit(nopython=True)
 def manhattan(x, y, rnd_feature_idxs):
     """
     Calculates the conventional pairwise Manhattan city
@@ -110,7 +110,7 @@ def manhattan(x, y, rnd_feature_idxs):
     return diff
 
 
-@numba.jit
+@numba.jit(nopython=True)
 def euclidean(x, y, rnd_feature_idxs):
     """
     Calculates the conventional pairwise Euclidean
@@ -147,7 +147,7 @@ def euclidean(x, y, rnd_feature_idxs):
     return math.sqrt(diff)
 
 
-@numba.jit
+@numba.jit(nopython=True)
 def common_ngrams2(x, y, rnd_feature_idxs):
     diff = 0.0
 
@@ -166,7 +166,7 @@ def common_ngrams2(x, y, rnd_feature_idxs):
     return diff
 
 
-@numba.jit
+@numba.jit(nopython=True)
 def common_ngrams(x, y, rnd_feature_idxs):
     diff, z = 0.0, 0.0
 
@@ -182,7 +182,7 @@ def common_ngrams(x, y, rnd_feature_idxs):
     return diff
 
 
-@numba.jit
+@numba.jit(nopython=True)
 def cosine(x, y, rnd_feature_idxs):
     numerator, denom_a, denom_b = 0.0, 0.0, 0.0
 

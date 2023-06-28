@@ -49,6 +49,8 @@ def minmax(x, y: list[float], rnd_feature_idxs: list[int]):
       1(4):300–307.
     """
 
+    # NB - vectorising this with np.minimum etc is slower.
+
     mins, maxs = 0.0, 0.0
     a, b = 0.0, 0.0
 
@@ -62,7 +64,9 @@ def minmax(x, y: list[float], rnd_feature_idxs: list[int]):
             maxs += b
             mins += a
 
-    return 1.0 - (mins / (maxs + 1e-6))  # avoid zero division
+    if maxs >= 0.0:
+        return 1.0 - (mins / maxs)  # avoid zero division
+    return 0.0
 
 
 # TODO: below here updated to @numba.jit without checking anything!

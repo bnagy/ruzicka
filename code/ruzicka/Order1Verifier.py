@@ -18,7 +18,7 @@ described in e.g.:
 
 import random
 from itertools import combinations
-from typing import Sequence
+from typing import Collection
 import numpy as np
 import numpy.typing as npt
 
@@ -101,7 +101,7 @@ class Order1Verifier:
         self.rnd = np.random.RandomState(random_state)
         self.metric_fn = CPU_METRICS[metric]
 
-    def fit(self, X: Sequence[Sequence[float]], y: Sequence[int]):
+    def fit(self, X: Collection[Collection[float]], y: Collection[int]):
         """
         Runs very light, memory-based like fitting Method
         which primarily stores `X` and `y` in memory. In the
@@ -128,7 +128,7 @@ class Order1Verifier:
         """
 
         self.train_X = np.array(
-            NearestCentroid().fit(X, y).centroids_
+            NearestCentroid().fit(X, np.array(y)).centroids_
         )  # mean centroids
         self.train_y = np.array(range(self.train_X.shape[0]))
 
@@ -151,9 +151,9 @@ class Order1Verifier:
         # values outside (0,1), which is bad.
         # self.distance_scaler2 = MinMaxScaler().fit(distances)
 
-    def dist_closest_target(
+    def _dist_closest_target(
         self,
-        test_vector: Sequence[float],
+        test_vector: Collection[float],
         target_int: int,
         rnd_feature_idxs: npt.NDArray[np.int32] = np.array([]),
     ) -> float:
@@ -208,7 +208,7 @@ class Order1Verifier:
         return distance
 
     def predict_proba(
-        self, test_X: Sequence[Sequence[float]], test_y: Sequence[int]
+        self, test_X: Collection[Collection[float]], test_y: Collection[int]
     ) -> npt.NDArray[np.float32]:
         """
 
@@ -270,7 +270,7 @@ class Order1Verifier:
 
         distances = []
         for test_vector, target_int in zip(test_X, test_y):
-            target_dist = self.dist_closest_target(test_vector, target_int)
+            target_dist = self._dist_closest_target(test_vector, target_int)
             distances.append(target_dist)
 
         # shape as one feature, many samples

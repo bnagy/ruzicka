@@ -10,7 +10,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.preprocessing import StandardScaler, Normalizer
 
-
 def identity(y):
     """
     Simple identity function.
@@ -45,7 +44,7 @@ class StdDevScaler(BaseEstimator):
             standard deviation.
 
         """
-        self.weights_ = StandardScaler(with_mean=False).fit(X).std_
+        self.weights_ = StandardScaler(with_mean=False).fit(X).std_ #type:ignore
         return self
 
     def transform(self, X):
@@ -70,8 +69,8 @@ class StdDevScaler(BaseEstimator):
             The scaled input data in sparse format.
 
         """
-        if not sp.isspmatrix_csr(X):  # convert to sparse format if needed:
-            X = sp.csr_matrix(X, dtype=np.float64)
+        if not sp.isspmatrix_csr(X):  # convert to sparse format if needed: #type:ignore
+            X = sp.csr_matrix(X, dtype=np.float64) #type:ignore
         for i in range(X.shape[0]):
             start, end = X.indptr[i], X.indptr[i + 1]
             X.data[start:end] /= self.weights_[X.indices[start:end]]
@@ -224,7 +223,7 @@ class Vectorizer:
         return self
 
     def transform(self, texts):
-        return self.transformer.transform(texts)
+        return self.transformer.transform(texts).toarray() #type:ignore
 
     def fit_transform(self, texts):
         self.fit(texts)

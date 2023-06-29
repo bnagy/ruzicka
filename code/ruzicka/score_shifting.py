@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 from itertools import permutations
-from typing import Sequence
+from typing import Collection
 import numpy as np
 import warnings
 
 from .evaluation import pan_metrics
 
+EPSILON = 1e-6
 
 def rescale(value, orig_min, orig_max, new_min, new_max: float) -> float:
     """
@@ -53,7 +54,7 @@ def rescale(value, orig_min, orig_max, new_min, new_max: float) -> float:
 
 
 def correct_scores(
-    scores: Sequence[float], p1: float = 0.25, p2: float = 0.75
+    scores: Collection[float], p1: float = 0.25, p2: float = 0.75
 ) -> list[float]:
     """
 
@@ -78,7 +79,7 @@ def correct_scores(
         The rescaled scores.
 
     """
-    if min(scores) < 0.0 or max(scores) > 1.0:
+    if min(scores) < 0.0-EPSILON or max(scores) > 1.0+EPSILON:
         warnings.warn(
             "Warning: scores are expected to be in [0,1], shifting may not work properly."
         )
@@ -122,7 +123,7 @@ class ScoreShifter:
         self.step_size = step_size
         self.fitted: bool = False
 
-    def fit(self, predicted_scores, ground_truth_scores: Sequence[float]):
+    def fit(self, predicted_scores, ground_truth_scores: Collection[float]):
         """
         Fits the score shifter on the (development) scores for
         a data set, by searching the optimal `p1` and `p2` (in terms
@@ -179,7 +180,7 @@ class ScoreShifter:
         self.fitted = True
         return self
 
-    def transform(self, scores: Sequence[float]) -> list[float]:
+    def transform(self, scores: Collection[float]) -> list[float]:
         """
         Shifts the probabilities of a (new) problem series, through
         applying the score_shifter with the previously set `p1` and `p2`.

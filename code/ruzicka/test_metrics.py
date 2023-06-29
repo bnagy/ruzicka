@@ -13,12 +13,14 @@ package is available:
 """
 
 import numba
+from numpy.typing import NDArray
+import numpy as np
 
 TARGET = "cpu"
 
 
 @numba.jit(nopython=True)
-def minmax(x, y: list[float], rnd_feature_idxs: list[int]):
+def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
     """
     Calculates the pairwise "minmax" distance between
     two vectors, but limited to the `rnd_feature_idxs`

@@ -20,7 +20,7 @@ import random
 
 import numpy as np
 import numpy.typing as npt
-from typing import Sequence, Callable
+from typing import Collection, Callable
 
 from sklearn.neighbors import NearestCentroid
 
@@ -115,7 +115,7 @@ class Order2Verifier:
                 f"Unknown metric {metric}. Valid are: {list(CPU_METRICS.keys())}"
             )
 
-    def fit(self, X: Sequence[Sequence[float]], y: Sequence[int]):
+    def fit(self, X: Collection[Collection[float]], y: Collection[int]):
         """
         Runs very light, memory-based like fitting Method
         which primarily stores `X` and `y` in memory. In the
@@ -142,22 +142,22 @@ class Order2Verifier:
         """
 
         if self.base == "instance":
-            self.train_X = np.array(X)
-            self.train_y = np.array(y)
+            self.train_X = np.array(X, dtype="float")
+            self.train_y = np.array(y, dtype="int")
 
         elif self.base == "profile":
             self.train_X = np.array(
-                NearestCentroid().fit(X, y).centroids_
+                NearestCentroid().fit(X, np.array(y)).centroids_, dtype="float"
             )  # mean centroids
-            self.train_y = np.array(range(self.train_X.shape[0]))
-        
+            self.train_y = np.array(range(self.train_X.shape[0]), dtype="int")
+
         self.fitted = True
 
-    def dist_closest_target(
+    def _dist_closest_target(
         self,
-        test_vector: Sequence[float],
+        test_vector: Collection[float],
         target_int: int,
-        rnd_feature_idxs: npt.NDArray[np.int32] = np.array([]),
+        rnd_feature_idxs: npt.NDArray[np.int32] = np.array([], dtype="int32"),
     ) -> float:
         """
 
@@ -196,25 +196,25 @@ class Order2Verifier:
 
         # use entire feature space if necessary:
         if len(rnd_feature_idxs) == 0:  # use entire feature space
-            rnd_feature_idxs = np.array(range(len(test_vector)))
+            rnd_feature_idxs = np.array(range(len(test_vector)), dtype="int")
 
         # calculate distance to nearest neighbour for the
         # target author (which potentially has only 1 item):
-        distance = float("inf")
+        min_dist = float("inf")
         for idx in range(len(self.train_y)):
             if self.train_y[idx] == target_int:
                 d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-                if d < distance:
-                    distance = d
+                if d < min_dist:
+                    min_dist = d
 
-        return distance
+        return min_dist
 
-    def dist_closest_non_target(
+    def _dist_closest_non_target(
         self,
-        test_vector: Sequence[float],
+        test_vector: npt.NDArray[np.float64],
         target_int: int,
         nb_imposters: int = 0,
-        rnd_feature_idxs: npt.NDArray[np.int32] = np.array([]),
+        rnd_feature_idxs: npt.NDArray[np.int32] = np.array([], dtype="int32"),
     ) -> float:
         """
 
@@ -261,7 +261,7 @@ class Order2Verifier:
 
         # use entire feature space if necessary:
         if len(rnd_feature_idxs) == 0:
-            rnd_feature_idxs = np.array(range(len(test_vector)))
+            rnd_feature_idxs = np.array(range(len(test_vector)), dtype="int")
 
         # calculate distance to nearest neighbour for any
         # author whom is NOT the target author
@@ -271,19 +271,19 @@ class Order2Verifier:
 
         # randomly pick a subset of imposters:
         random.shuffle(non_target_idxs)
-        distance = float("inf")
+        min_dist = float("inf")
         for idx in non_target_idxs[:nb_imposters]:
             d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-            if d < distance:
-                distance = d
-        return distance
+            if d < min_dist:
+                min_dist = d
+        return min_dist
 
     def predict_proba(
         self,
-        test_X: Sequence[Sequence[float]],
-        test_y: Sequence[int],
+        test_X: Collection[Collection[float]],
+        test_y: Collection[int],
         nb_imposters: int = 0,
-    ) -> npt.NDArray[np.float32]:
+    ) -> npt.NDArray[np.float64]:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -348,16 +348,15 @@ class Order2Verifier:
         """
         if not self.fitted:
             raise RuntimeError("Cannot predict without training.")
-        
+
         distances = []
         if not self.nb_bootstrap_iter:  # naive verification:
-            for test_vector, target_int in zip(test_X, test_y):
-                target_dist = self.dist_closest_target(
-                    test_vector, target_int
-                )
-                non_target_dist = self.dist_closest_non_target(
-                    test_vector, target_int
-                )
+            for test_vector, target_int in zip(
+                # we accept Collection, but use NDArrays internally
+                np.array(test_X, dtype="float64"), np.array(test_y, dtype="int")
+            ):
+                target_dist = self._dist_closest_target(test_vector, target_int)
+                non_target_dist = self._dist_closest_non_target(test_vector, target_int)
                 if target_dist < non_target_dist:
                     distances.append(1.0)
                 else:
@@ -365,7 +364,10 @@ class Order2Verifier:
 
         else:  # bootstrapped, imposter-based, verification:
             cnt = 0
-            for test_vector, target_int in zip(test_X, test_y):
+            for test_vector, target_int in zip(
+                # we accept Collection, but use NDArrays internally
+                np.array(test_X, dtype="float64"), np.array(test_y, dtype="int")
+            ):                
                 cnt += 1
                 if cnt % 10 == 0:
                     print(
@@ -379,12 +381,12 @@ class Order2Verifier:
                         self.train_X.shape[1],
                         size=int(self.train_X.shape[1] * self.rnd_prop),
                     )
-                    target_dist = self.dist_closest_target(
+                    target_dist = self._dist_closest_target(
                         test_vector,
                         target_int,
                         rnd_feature_idxs,
                     )
-                    non_target_dist = self.dist_closest_non_target(
+                    non_target_dist = self._dist_closest_non_target(
                         test_vector,
                         target_int,
                         nb_imposters,
@@ -394,4 +396,4 @@ class Order2Verifier:
                         bootstrap_score += 1.0 / self.nb_bootstrap_iter
                 distances.append(bootstrap_score)
 
-        return np.array(distances, dtype="float32")
+        return np.array(distances, dtype="float64")

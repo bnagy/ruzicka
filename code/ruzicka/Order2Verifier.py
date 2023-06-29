@@ -106,6 +106,7 @@ class Order2Verifier:
         self.rnd_prop = rnd_prop
         self.train_X: npt.NDArray
         self.train_y: npt.NDArray
+        self.fitted: bool = False
 
         try:
             self.metric_fn = CPU_METRICS[metric]
@@ -149,6 +150,8 @@ class Order2Verifier:
                 NearestCentroid().fit(X, y).centroids_
             )  # mean centroids
             self.train_y = np.array(range(self.train_X.shape[0]))
+        
+        self.fitted = True
 
     def dist_closest_target(
         self,
@@ -343,7 +346,9 @@ class Order2Verifier:
         obtain a more sensible estimate in this respect.
 
         """
-
+        if not self.fitted:
+            raise RuntimeError("Cannot predict without training.")
+        
         distances = []
         if not self.nb_bootstrap_iter:  # naive verification:
             for test_vector, target_int in zip(test_X, test_y):

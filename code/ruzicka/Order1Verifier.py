@@ -16,13 +16,14 @@ described in e.g.:
 
 """
 
-from __future__ import print_function
 import random
 from itertools import combinations
-
+from typing import Sequence
 import numpy as np
+import numpy.typing as npt
+
 from sklearn.neighbors import NearestCentroid
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 # import the pairwise distance functions:
 from .test_metrics import minmax, manhattan, euclidean, common_ngrams, cosine
@@ -54,7 +55,7 @@ class Order1Verifier:
     """
 
     def __init__(
-        self, metric="manhattan", base="profile", random_state=1066, device="cpu"
+        self, metric: str = "manhattan", base: str = "profile", random_state: int = 1066
     ):
         """
         Constructor.
@@ -86,31 +87,21 @@ class Order1Verifier:
         rnd_prop: scalar, default=.5
             Float specifying the number of features to be
             randomly sampled in each iteration.
-
-        device: str, default='cpu'
-            Indicating whether we use the theano- or JIT-
-            accelerated distance computations. (For the
-            paper, we eventually used the numba-version
-            throughout.)
-
         """
 
         # some sanity checks:
         if base != "profile":
             raise NotImplementedError
         self.base = base
+        self.train_X: npt.NDArray
+        self.train_y: npt.NDArray
 
         # set rnd seeds:
         random.seed(1066)
         self.rnd = np.random.RandomState(random_state)
+        self.metric_fn = CPU_METRICS[metric]
 
-        # check with we use JIT- or theano-metrics:
-        if device == "cpu":
-            self.metric_fn = CPU_METRICS[metric]
-        elif device == "gpu":
-            self.metric_fn = GPU_METRICS[metric]
-
-    def fit(self, X, y):
+    def fit(self, X: Sequence[Sequence[float]], y: Sequence[int]):
         """
         Runs very light, memory-based like fitting Method
         which primarily stores `X` and `y` in memory. In the
@@ -136,7 +127,9 @@ class Order1Verifier:
 
         """
 
-        self.train_X = NearestCentroid().fit(X, y).centroids_  # mean centroids
+        self.train_X = np.array(
+            NearestCentroid().fit(X, y).centroids_
+        )  # mean centroids
         self.train_y = np.array(range(self.train_X.shape[0]))
 
         nb_items = self.train_X.shape[0]
@@ -144,7 +137,7 @@ class Order1Verifier:
         # calculate all pairwise distances in data set:
         distances = []
         # signatureless numba jit needs an array it can do type inference on,
-        # NDArray works.
+        # NDArray works (NOT a python list).
         idxs = np.array(range(self.train_X.shape[0]))
         for i, j in combinations(range(nb_items), 2):
             distances.append(self.metric_fn(self.train_X[i], self.train_X[j], idxs))
@@ -158,7 +151,12 @@ class Order1Verifier:
         # values outside (0,1), which is bad.
         # self.distance_scaler2 = MinMaxScaler().fit(distances)
 
-    def dist_closest_target(self, test_vector, target_int, rnd_feature_idxs=[]):
+    def dist_closest_target(
+        self,
+        test_vector: Sequence[float],
+        target_int: int,
+        rnd_feature_idxs: npt.NDArray[np.int32] = np.array([]),
+    ) -> float:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -196,19 +194,22 @@ class Order1Verifier:
 
         # use entire feature space if necessary:
         if len(rnd_feature_idxs) == 0:  # use entire feature space
-            rnd_feature_idxs = np.array(range(test_vector.shape[0]))
+            rnd_feature_idxs = np.array(range(len(test_vector)))
 
         # calculate distance to nearest neighbour for the
         # target author (which potentially has only 1 item):
-        distances = []
+        distance = float("inf")
         for idx in range(len(self.train_y)):
             if self.train_y[idx] == target_int:
-                distances.append(
-                    self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-                )
-        return min(distances)
+                d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
+                if d < distance:
+                    distance = d
 
-    def predict_proba(self, test_X, test_y):
+        return distance
+
+    def predict_proba(
+        self, test_X: Sequence[Sequence[float]], test_y: Sequence[int]
+    ) -> npt.NDArray[np.float32]:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -248,11 +249,6 @@ class Order1Verifier:
             of the individual test_documents has to be verified. All
             authors in test_y *must* be present in the training data.
 
-        nb_imposters : int, default=None
-            Specifies the number of imposter or distractor documents
-            which are randomly sampled from the training documents
-            which were not written by the target author.
-
         Returns
         ----------
         probas : list of floats, array-like [nb_problems]
@@ -274,9 +270,7 @@ class Order1Verifier:
 
         distances = []
         for test_vector, target_int in zip(test_X, test_y):
-            target_dist = self.dist_closest_target(
-                test_vector=test_vector, target_int=target_int, rnd_feature_idxs=[]
-            )
+            target_dist = self.dist_closest_target(test_vector, target_int)
             distances.append(target_dist)
 
         # shape as one feature, many samples

@@ -209,7 +209,7 @@ class Order1Verifier:
 
     def predict_proba(
         self, test_X: Collection[Collection[float]], test_y: Collection[int]
-    ) -> npt.NDArray[np.float32]:
+    ) -> npt.NDArray[np.float64]:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -269,12 +269,15 @@ class Order1Verifier:
         """
 
         distances = []
-        for test_vector, target_int in zip(test_X, test_y):
+        for test_vector, target_int in zip(
+            # we accept Collection, but use NDArrays internally
+            np.array(test_X, dtype="float64"), np.array(test_y, dtype="int")
+        ):   
             target_dist = self._dist_closest_target(test_vector, target_int)
             distances.append(target_dist)
 
         # shape as one feature, many samples
-        distances = np.array(distances, dtype="float32").reshape(-1, 1)
+        distances = np.array(distances, dtype="float64").reshape(-1, 1)
         # Use the distance ranges from the training data to get z-scores
         d_standard = self.distance_scaler1.transform(distances)
         # But scale to (0,1) for output based on the MinMax of the test data

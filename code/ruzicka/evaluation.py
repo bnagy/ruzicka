@@ -16,6 +16,8 @@ See for more details:
 
 from sklearn.metrics import roc_auc_score
 from typing import Collection
+import numpy as np
+import numba
 
 def accuracy(prediction_scores, ground_truth_scores: Collection[float]) -> float:
     """
@@ -85,7 +87,8 @@ def auc(prediction_scores, ground_truth_scores: Collection[float]) -> float:
 
     return float(roc_auc_score(ground_truth_scores, prediction_scores))
 
-
+# JIT this because it's used in a hot method (the score shifter grid search)
+@numba.jit(nopython=True)
 def c_at_1(prediction_scores, ground_truth_scores: Collection[float]) -> float:
     """
     Calculates the c@1 score, an evaluation method specific to the
@@ -167,5 +170,5 @@ def pan_metrics(
     return (
         accuracy(prediction_scores, ground_truth_scores),
         auc(prediction_scores, ground_truth_scores),
-        c_at_1(prediction_scores, ground_truth_scores),
+        c_at_1(np.array(prediction_scores), np.array(ground_truth_scores)),
     )

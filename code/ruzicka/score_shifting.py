@@ -6,9 +6,10 @@ from typing import Collection
 import numpy as np
 import warnings
 
-from .evaluation import pan_metrics
+from .evaluation import c_at_1, auc
 
 EPSILON = 1e-6
+
 
 def rescale(value, orig_min, orig_max, new_min, new_max: float) -> float:
     """
@@ -39,12 +40,12 @@ def rescale(value, orig_min, orig_max, new_min, new_max: float) -> float:
     """
 
     orig_span = orig_max - orig_min
-    if orig_span <= 0.0:
+    if orig_span < 0.0 - EPSILON:
         raise ValueError(
             f"Bad span for rescale (original span {orig_min:.2f} - {orig_max:.2f})"
         )
     new_span = new_max - new_min
-    if new_span <= 0.0:
+    if new_span < 0.0 - EPSILON:
         raise ValueError(
             f"Bad span for rescale (new span {new_min:.2f} - {new_max:.2f})"
         )
@@ -79,7 +80,7 @@ def correct_scores(
         The rescaled scores.
 
     """
-    if min(scores) < 0.0-EPSILON or max(scores) > 1.0+EPSILON:
+    if min(scores) < 0.0 - EPSILON or max(scores) > 1.0 + EPSILON:
         warnings.warn(
             "Warning: scores are expected to be in [0,1], shifting may not work properly."
         )
@@ -107,20 +108,20 @@ class ScoreShifter:
 
     """
 
-    def __init__(self, step_size: float = 0.01):
+    def __init__(self, grid_size: int = 100):
         """
         Contructor.
 
         Parameters
         ----------
-        step_size: float, default=0.01
-            The step size between the different values of
+        grid_size : int = 100
+            The number of points between the different values of
             `p1` and `p2` to be tested in the grid search.
 
         """
         self.optimal_p1: float
         self.optimal_p2: float
-        self.step_size = step_size
+        self.grid_size = grid_size
         self.fitted: bool = False
 
     def fit(self, predicted_scores, ground_truth_scores: Collection[float]):
@@ -142,7 +143,9 @@ class ScoreShifter:
         """
 
         # define the grid to be searched:
-        thresholds = np.arange(0.05, 1.0, self.step_size)
+        thresholds = np.around(
+            np.linspace(0.0, 1.0, num=self.grid_size, endpoint=False), 6
+        )
         nb_thresholds = thresholds.shape[0]
 
         # intialize score containers:
@@ -151,15 +154,14 @@ class ScoreShifter:
         c_at_1_scores = both_scores.copy()
 
         # iterate over combinations:
+        gt = np.array(ground_truth_scores)
         for i, j in permutations(range(nb_thresholds), 2):
             p1, p2 = thresholds[i], thresholds[j]
 
             if p1 <= p2:  # ensure p1 <= p2!
-                corrected_scores = correct_scores(predicted_scores, p1=p1, p2=p2)
-                _, auc_score, c_at_1_score = pan_metrics(
-                    prediction_scores=corrected_scores,
-                    ground_truth_scores=ground_truth_scores,
-                )
+                corrected_scores = np.array(correct_scores(predicted_scores, p1, p2))
+                auc_score = auc(corrected_scores, gt)
+                c_at_1_score = c_at_1(corrected_scores, gt)
                 auc_scores[i][j] = auc_score
                 c_at_1_scores[i][j] = c_at_1_score
                 both_scores[i][j] = auc_score * c_at_1_score

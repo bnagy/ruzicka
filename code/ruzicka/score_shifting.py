@@ -4,6 +4,7 @@
 from itertools import permutations
 from typing import Sequence
 import numpy as np
+import warnings
 
 from .evaluation import pan_metrics
 
@@ -42,7 +43,10 @@ def rescale(value, orig_min, orig_max, new_min, new_max: float) -> float:
             f"Bad span for rescale (original span {orig_min:.2f} - {orig_max:.2f})"
         )
     new_span = new_max - new_min
-
+    if new_span <= 0.0:
+        raise ValueError(
+            f"Bad span for rescale (new span {new_min:.2f} - {new_max:.2f})"
+        )
     scaled_value = (value - orig_min) / orig_span
 
     return new_min + (scaled_value * new_span)
@@ -74,6 +78,10 @@ def correct_scores(
         The rescaled scores.
 
     """
+    if min(scores) < 0.0 or max(scores) > 1.0:
+        warnings.warn(
+            "Warning: scores are expected to be in [0,1], shifting may not work properly."
+        )
     new_scores = []
     for score in scores:
         if score <= p1:

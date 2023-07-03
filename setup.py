@@ -1,10 +1,10 @@
 from distutils.core import setup
 
 setup(
-    name="Ruzicka Imposters",
+    name="Ruzicka",
     version="0.0.1",
     author="Ben Nagy",
-    packages=["ruzicka-imposters"],
+    packages=["ruzicka"],
     license="MIT",
     url="https://github.com/bnagy/ruzicka",
     long_description_content_type="text/markdown",

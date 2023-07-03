@@ -19,7 +19,7 @@ This was a *quick job* to fix it for my own use, and has not been carefully test
 
 This is not really cooked enough for PiPi, so for now install straight off github.
 
-`pip install git+https://github.com/bnagy/ruzicka@main#egg=ruzicka-imposters`
+`pip install git+https://github.com/bnagy/ruzicka@main#egg=ruzicka`
 
 ## Original Introduction
 

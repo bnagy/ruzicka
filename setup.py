@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(
-    name="Ružička Imposters",
+    name="Ruzicka Imposters",
     version="0.0.1",
     author="Ben Nagy",
     packages=["ruzicka-imposters"],

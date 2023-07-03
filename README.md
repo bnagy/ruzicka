@@ -1,6 +1,26 @@
 # Ružička: Authorship Verification in Python
 
 ## Introduction
+
+## NOTE
+
+This repository is based on the work (and paper) by [Mike Kestemont](https://github.com/mikekestemont/ruzicka)
+
+The code here is:
+- significantly stripped down
+- updated for Python 3
+- pylance clean and type hinted
+- slightly optimised in a few places (it was already pretty fast)
+- installable as a package
+
+This was a *quick job* to fix it for my own use, and has not been carefully tested, but might be a useful starting point for someone.
+
+## Installation
+
+`pip install git+https://github.com/bnagy/ruzicka@main`
+
+## Original Introduction
+
 <img align="right" src="https://cloud.githubusercontent.com/assets/4376879/11402489/8703f80a-9398-11e5-8091-2b1ed5b2bb97.png" 
 alt="IMAGE ALT TEXT HERE" height="240" border="10"/>
 The code in this repository offers an implementation of a number of routines in authorship studies, with a focus on authorship verification. It is named after the inventor of the "minmax" measure (M. Ružička). The repository offers a generic implementation of two commonly used verification systems. The first system is an intrinsic verifier, depending on a first-order metric (O1), close to the one described in:
@@ -18,45 +38,21 @@ M. Koppel and Y. Winter (2014), Determining if Two Documents are by the Same
 Author, JASIST, 65(1): 178-187.
 ```
 
-The package additionally offers a number of useful implementations of common vector space models and evaluation metrics. The code in this repository was used to produce the results in a paper which is currently under submission.
-
+The package additionally offers a number of useful implementations of common vector space models and evaluation metrics. The code in this repository was used to produce the results in a paper ~~which is currently under submission~~.
 
 ## Quickstart
 
-<img align="right" src="https://cloud.githubusercontent.com/assets/4376879/11402488/87041952-9398-11e5-82f9-cf3abcbe5f53.png" 
-alt="IMAGE ALT TEXT HERE" height="240" border="10" style="float: right;" />
-While the code in this repository was tailored towards our needs for a specific paper, the `code` folder includes an IPython notebook, which will guide you through some of the main functionality offered. In the code itself, we try to offer comprehensive documentation in the form of docstrings. All experiments in our paper can be repeated using the following scripts under `code`:
-+ 01pan_experiments.py
-+ 02latin_dev_o1.py
-+ 03latin_dev_o2.py
-+ 04latin_test_o2.py
-+ 05latin_testviz.py
-
-## Data sets
-This repository includes 6 multilingual benchmark datasets for authorship verification (under `data/`), which were used as the official competition data in the 2014 track on authorship verification of the annual [PAN evaluation lab](http://www.uni-weimar.de/medien/webis/events/pan-14/pan14-web/) on uncovering plagiarism, authorship, and social software misuse. The [survey paper](http://www.uni-weimar.de/medien/webis/events/pan-14/pan14-papers-final/pan14-authorship-verification/stamatatos14-overview.pdf) by Stamatatos et al. provides detailed information on the provenance, structure and nature of these corpora (together with baselines figures etc.). The competition data for this competition covered the following text varieties:
-* Dutch essays
-* Dutch reviews
-* English essays
-* English novels
-* Spanish articles
-* Greek articles
-
-Additionally, this repository includes a novel benchmark dataset for Latin authors from Antiquity (under `data/latin/`), which were mainly selected from the [Latin Library](http://www.thelatinlibrary.com/). This data set has a similar structure as the PAN corpora. 
+Most of the original Kestemont examples and bootstrap hypothesis testing framework has been removed. You can find that at the original repo. You can still follow the original [Quickstart notebook](code/Quickstart.ipynb) which covers the basic use of the vectorisation tools, and the O1 and O2 Verifiers.
 
 ## Dependencies
-This code requires Python 2.7+ (Python 3 has not been tested). The repository is dependent on a number of well-known third-party Python libraries, including:
+
+`setup.py` should take care of them for you, but for the record:
+
 + numpy
 + scipy
 + scikit-learn
-+ matplotlib
-+ seaborn
 + numba
 
-and preferably (for GPU acceleration and/or JIT-compilation):
-+ theano
-+ numbapro
-
-We recommend installing Continuum's excellent [Anaconda Python framework](https://www.continuum.io/downloads), which comes bundled with most of these dependencies. Additionally, this code integrates a number of [scripts by Vincent van Asch](http://www.cnts.ua.ac.be/~vincent/software.html) to statistically compare the output of different classifiers, using Approximate Randomization Testing (under `ruzicka/`: `art.py`, `combinations.py` and `confusionmatrix.py`).
 
 
 

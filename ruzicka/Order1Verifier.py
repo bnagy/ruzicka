@@ -128,7 +128,7 @@ class Order1Verifier:
         """
 
         self.train_X = np.array(
-            NearestCentroid().fit(X, np.array(y)).centroids_
+            NearestCentroid().fit(np.array(X), np.array(y)).centroids_
         )  # mean centroids
         self.train_y = np.array(range(self.train_X.shape[0]))
 
@@ -271,8 +271,9 @@ class Order1Verifier:
         distances = []
         for test_vector, target_int in zip(
             # we accept Collection, but use NDArrays internally
-            np.array(test_X, dtype="float64"), np.array(test_y, dtype="int")
-        ):   
+            np.array(test_X, dtype="float64"),
+            np.array(test_y, dtype="int"),
+        ):
             target_dist = self._dist_closest_target(test_vector, target_int)
             distances.append(target_dist)
 

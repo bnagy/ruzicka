@@ -7,6 +7,9 @@ import numpy as np
 import warnings
 
 from .evaluation import c_at_1, auc
+import logging
+
+logger = logging.getLogger("ruzicka")
 
 EPSILON = 1e-6
 
@@ -174,10 +177,10 @@ class ScoreShifter:
         self.optimal_p2 = thresholds[opt_p2_idx]
 
         # print some info:
-        print("p1 for optimal combo:", self.optimal_p1)
-        print("p2 for optimal combo:", self.optimal_p2)
-        print("AUC for optimal combo:", auc_scores[opt_p1_idx][opt_p2_idx])
-        print("c@1 for optimal combo:", c_at_1_scores[opt_p1_idx][opt_p2_idx])
+        logger.info(f"p1 for optimal combo: {self.optimal_p1}")
+        logger.info(f"p2 for optimal combo: {self.optimal_p2}")
+        logger.info(f"AUC for optimal combo: {auc_scores[opt_p1_idx][opt_p2_idx]}")
+        logger.info(f"c@1 for optimal combo: {c_at_1_scores[opt_p1_idx][opt_p2_idx]}")
 
         self.fitted = True
         return self

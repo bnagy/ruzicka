@@ -17,6 +17,7 @@ described in e.g.:
 """
 
 import random
+import logging
 
 import numpy as np
 import numpy.typing as npt
@@ -34,6 +35,8 @@ CPU_METRICS: dict[str, Callable] = {
     "cng": common_ngrams,
     "cosine": cosine,
 }
+
+logger = logging.getLogger("ruzicka")
 
 
 class Order2Verifier:
@@ -147,7 +150,8 @@ class Order2Verifier:
 
         elif self.base == "profile":
             self.train_X = np.array(
-                NearestCentroid().fit(X, np.array(y)).centroids_, dtype="float"
+                NearestCentroid().fit(np.array(X), np.array(y)).centroids_,
+                dtype="float",
             )  # mean centroids
             self.train_y = np.array(range(self.train_X.shape[0]), dtype="int")
 
@@ -353,7 +357,8 @@ class Order2Verifier:
         if not self.nb_bootstrap_iter:  # naive verification:
             for test_vector, target_int in zip(
                 # we accept Collection, but use NDArrays internally
-                np.array(test_X, dtype="float64"), np.array(test_y, dtype="int")
+                np.array(test_X, dtype="float64"),
+                np.array(test_y, dtype="int"),
             ):
                 target_dist = self._dist_closest_target(test_vector, target_int)
                 non_target_dist = self._dist_closest_non_target(test_vector, target_int)
@@ -366,12 +371,13 @@ class Order2Verifier:
             cnt = 0
             for test_vector, target_int in zip(
                 # we accept Collection, but use NDArrays internally
-                np.array(test_X, dtype="float64"), np.array(test_y, dtype="int")
-            ):                
+                np.array(test_X, dtype="float64"),
+                np.array(test_y, dtype="int"),
+            ):
                 cnt += 1
                 if cnt % 10 == 0:
-                    print(
-                        "\t - # test documents processed:", cnt, "out of", len(test_y)
+                    logger.info(
+                        f"# test documents processed: {cnt} out of {len(test_y)}"
                     )
 
                 bootstrap_score = 0.0

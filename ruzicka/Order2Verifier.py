@@ -60,6 +60,7 @@ class Order2Verifier:
         self,
         metric: str = "manhattan",
         base: str = "profile",
+        rank: bool = True,
         nb_bootstrap_iter: int = 0,
         random_state: int = 1066,
         rnd_prop: float = 0.5,
@@ -105,6 +106,7 @@ class Order2Verifier:
         self.rnd = np.random.RandomState(random_state)
 
         self.base = base
+        self.rank = rank
         self.nb_bootstrap_iter = nb_bootstrap_iter
         self.rnd_prop = rnd_prop
         self.train_X: npt.NDArray
@@ -213,13 +215,13 @@ class Order2Verifier:
 
         return min_dist
 
-    def _dist_closest_non_target(
+    def _dist_non_targets(
         self,
         test_vector: npt.NDArray[np.float64],
         target_int: int,
         nb_imposters: int = 0,
         rnd_feature_idxs: npt.NDArray[np.int32] = np.array([], dtype="int32"),
-    ) -> float:
+    ) -> npt.NDArray[np.float64]:
         """
 
         Given a `test_vector` and an integer representing a target
@@ -256,7 +258,7 @@ class Order2Verifier:
 
         Returns
         ----------
-        dist : float
+        dists : np.NDArray[float64]
             The actual distance to the nearest document vector
             in memory, which was not written by the target author,
             among a number of randomly sampled imposter documents.
@@ -275,12 +277,10 @@ class Order2Verifier:
 
         # randomly pick a subset of imposters:
         random.shuffle(non_target_idxs)
-        min_dist = float("inf")
-        for idx in non_target_idxs[:nb_imposters]:
-            d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-            if d < min_dist:
-                min_dist = d
-        return min_dist
+        dists = np.zeros(len(non_target_idxs[:nb_imposters]), dtype=np.float64)
+        for i, idx in enumerate(non_target_idxs[:nb_imposters]):
+            dists[i] = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
+        return np.flip(np.sort(dists))
 
     def predict_proba(
         self,
@@ -361,8 +361,8 @@ class Order2Verifier:
                 np.array(test_y, dtype="int"),
             ):
                 target_dist = self._dist_closest_target(test_vector, target_int)
-                non_target_dist = self._dist_closest_non_target(test_vector, target_int)
-                if target_dist < non_target_dist:
+                non_target_dists = self._dist_non_targets(test_vector, target_int)
+                if target_dist < non_target_dists[0]:
                     distances.append(1.0)
                 else:
                     distances.append(0.0)
@@ -392,14 +392,19 @@ class Order2Verifier:
                         target_int,
                         rnd_feature_idxs,
                     )
-                    non_target_dist = self._dist_closest_non_target(
+                    non_target_dists = self._dist_non_targets(
                         test_vector,
                         target_int,
                         nb_imposters,
                         rnd_feature_idxs,
                     )
-                    if target_dist < non_target_dist:
-                        bootstrap_score += 1.0 / self.nb_bootstrap_iter
+                    if self.rank:
+                        # first index where a non_target dist is greater than the target
+                        rank = np.searchsorted(non_target_dists, target_dist)
+                        bootstrap_score += (1.0 / (rank + 1)) / self.nb_bootstrap_iter
+                    else:
+                        if target_dist < non_target_dists[0]:
+                            bootstrap_score += 1.0 / self.nb_bootstrap_iter
                 distances.append(bootstrap_score)
 
         return np.array(distances, dtype="float64")

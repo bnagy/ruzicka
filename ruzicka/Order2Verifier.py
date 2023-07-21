@@ -77,24 +77,29 @@ class Order2Verifier:
                 + euclidean
 
         base, str
-            Indicates whether to use an instance-based or
-            profile-based approach for each author; should
-            be 'profile' or 'instance'.
+            Indicates whether to use an instance-based or profile-based approach
+            for each author; should be 'profile' or 'instance'.
+
+        rank, str, default=True
+            If True, use Ranking-based Imposters (RBI) from Potha, N.,
+            Stamatatos, E. Improved algorithms for extrinsic author
+            verification. Knowl Inf Syst 62, 1903–1921 (2020). Does NOT
+            implement the 'most relevant imposters' approach (just bootstrap
+            harder!).
 
         nb_bootstrap_iter: int, default=100
-            Indicates the number of bootstrap iterations to
-            be used (e.g. 100). If this evaluates to False,
-            we run a naive version of the imposter algorithm
-            without bootstrapping; i.e. we simply check once
-            whether the target author appears to be a test
-            document's nearest neighbour among the imposters).
+            Indicates the number of bootstrap iterations to be used (e.g. 100).
+            If this evaluates to False, we run a naive version of the imposter
+            algorithm without bootstrapping; i.e. we simply check once whether
+            the target author appears to be a test document's nearest neighbour
+            among the imposters).
 
         random_seed: int, default=1066
             Integer used for seeding the random streams.
 
         rnd_prop: scalar, default=.5
-            Float specifying the number of features to be
-            randomly sampled in each iteration.
+            Float specifying the number of features to be randomly sampled in
+            each iteration.
         """
 
         # some sanity checks:
@@ -225,8 +230,8 @@ class Order2Verifier:
         """
 
         Given a `test_vector` and an integer representing a target
-        authors (`target_int`), we retrieve the distance to the
-        nearest document in the training data, which is NOT authored
+        authors (`target_int`), we retrieve the distances to the
+        documents in the training data, which are NOT authored
         by the target author. In the distance calculation, we only
         take into account the feature values specified in
         `rnd_feature_idxs` (if the latter parameter is specified);
@@ -259,8 +264,8 @@ class Order2Verifier:
         Returns
         ----------
         dists : np.NDArray[float64]
-            The actual distance to the nearest document vector
-            in memory, which was not written by the target author,
+            The actual distances to the document vectors
+            in memory, which were not written by the target author,
             among a number of randomly sampled imposter documents.
 
         """
@@ -280,7 +285,7 @@ class Order2Verifier:
         dists = np.zeros(len(non_target_idxs[:nb_imposters]), dtype=np.float64)
         for i, idx in enumerate(non_target_idxs[:nb_imposters]):
             dists[i] = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-        return np.flip(np.sort(dists))
+        return np.sort(dists)
 
     def predict_proba(
         self,
@@ -400,7 +405,9 @@ class Order2Verifier:
                     )
                     if self.rank:
                         # first index where a non_target dist is greater than the target
-                        rank = np.searchsorted(non_target_dists, target_dist)
+                        rank = np.searchsorted(
+                            non_target_dists, target_dist, side="left"
+                        )
                         bootstrap_score += (1.0 / (rank + 1)) / self.nb_bootstrap_iter
                     else:
                         if target_dist < non_target_dists[0]:

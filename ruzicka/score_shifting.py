@@ -111,19 +111,40 @@ class ScoreShifter:
 
     """
 
-    def __init__(self, grid_size: int = 100):
+    def __init__(
+        self,
+        grid_size: int = 100,
+        min: float = 0.2,
+        max: float = 0.8,
+        min_spread: float = 0.0,
+    ):
         """
         Contructor.
 
         Parameters
         ----------
         grid_size : int = 100
-            The number of points between the different values of
-            `p1` and `p2` to be tested in the grid search.
+            The number of points between the different values of `p1` and `p2`
+            to be tested in the grid search.
+
+        min : float = 0.2
+            The minimum value allowed for p1
+
+        max : float = 0.8
+            The maximum value allowed for p2
+
+        min_spread : float = 0.0
+            The minimum distance allowed between p1 and p2. This is useful
+            sometimes to stop the shifter from overfitting by optimising p1 and
+            p2 in very small ranges to eliminate one or two particular false
+            classifications.
 
         """
         self.optimal_p1: float
         self.optimal_p2: float
+        self.min = min
+        self.max = max
+        self.min_spread = min_spread
         self.grid_size = grid_size
         self.fitted: bool = False
 
@@ -147,7 +168,7 @@ class ScoreShifter:
 
         # define the grid to be searched:
         thresholds = np.around(
-            np.linspace(0.0, 1.0, num=self.grid_size, endpoint=False), 6
+            np.linspace(self.min, self.max, num=self.grid_size, endpoint=False), 6
         )
         nb_thresholds = thresholds.shape[0]
 
@@ -161,7 +182,7 @@ class ScoreShifter:
         for i, j in permutations(range(nb_thresholds), 2):
             p1, p2 = thresholds[i], thresholds[j]
 
-            if p1 <= p2:  # ensure p1 <= p2!
+            if (p1 <= p2) and (p2 - p1 >= self.min_spread):  # ensure p1 <= p2!
                 corrected_scores = np.array(correct_scores(predicted_scores, p1, p2))
                 auc_score = auc(corrected_scores, gt)
                 c_at_1_score = c_at_1(corrected_scores, gt)

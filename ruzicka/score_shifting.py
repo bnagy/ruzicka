@@ -43,16 +43,16 @@ def rescale(value, orig_min, orig_max, new_min, new_max: float) -> float:
     """
 
     orig_span = orig_max - orig_min
-    if orig_span < 0.0 - EPSILON:
-        raise ValueError(
-            f"Bad span for rescale (original span {orig_min:.2f} - {orig_max:.2f})"
-        )
+    # if orig_span < 0.0 + EPSILON:
+    #     raise ValueError(
+    #         f"Bad span for rescale (original span {orig_min:.2f} - {orig_max:.2f})"
+    #     )
     new_span = new_max - new_min
-    if new_span < 0.0 - EPSILON:
-        raise ValueError(
-            f"Bad span for rescale (new span {new_min:.2f} - {new_max:.2f})"
-        )
-    scaled_value = (value - orig_min) / orig_span
+    # if new_span < 0.0 + EPSILON:
+    #     raise ValueError(
+    #         f"Bad span for rescale (new span {new_min:.2f} - {new_max:.2f})"
+    #     )
+    scaled_value = (value - orig_min) / (orig_span + EPSILON)
 
     return new_min + (scaled_value * new_span)
 

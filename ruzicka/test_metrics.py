@@ -114,7 +114,7 @@ def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> floa
         + ((0.0 - ybar) * (0.0 - ybar) * (xn + nn))     # 0
     )
 
-    return top / bottom
+    return 1 - (top / bottom)
 
 # TODO: below here updated to @numba.jit without checking anything!
 

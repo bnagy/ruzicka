@@ -72,22 +72,49 @@ def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
 
 @numba.jit(nopython=True)
 def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> float:
+    """
+    Calculates the pairwise "Nini" distance between two vectors, but limited to
+    the `rnd_feature_idxs` specified. This is defined as 1 - phi where phi is
+    Pearson's Correlation applied to binary indicator vectors (all non-zero
+    frequencies are converted to 1). The range of the distance is [0,2].
+
+    Parameters
+    ----------
+    x: float array
+        The first vector of the vector pair.
+    y: float array
+        The second vector of the vector pair.
+    rnd_feature_idxs: int array
+        The list of indexes along which the distance has to be calculated
+        (useful for bootstrapping).
+
+    Returns
+    ----------
+    float: nini(x, y)
+
+    References:
+    ----------
+    - Nini, A. (2023). A Theory of Linguistic Individuality for Authorship
+      Analysis (Elements in Forensic Linguistics). Cambridge: Cambridge
+      University Press. doi:10.1017/9781108974851
+    """
+        
     # The 'Nini' distance is the Pearson's-r when the vectors are converted to
     # binary indicators, i.e. any value > 0 = 1. This is the same as the cosine
-    # similarity for centered (binary) vectors. We do some reasonably nasty
+    # distance for centered (binary) vectors. We do some reasonably nasty
     # stuff so we can do everything in one pass.
     xn, ny, xy, nn = 0.0, 0.0, 0.0, 0.0
     for i in rnd_feature_idxs:
-        if x[i] > 0:
+        if x[i] > 0.0:
             if y[i] > 0:
-                xy += 1
+                xy += 1.0
             else:
-                xn += 1
+                xn += 1.0
         else:  # x = 0
-            if y[i] > 0:
-                ny += 1
+            if y[i] > 0.0:
+                ny += 1.0
             else:
-                nn += 1
+                nn += 1.0
 
     # means are the total bits set / vector length
     len = xn + xy + ny + nn
@@ -97,10 +124,10 @@ def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> floa
     # x dot y. For every position (xn) where x is set and y isn't, those
     # positions get 1-xbar * 0-ybar, etc.
     top = (
-        xn * (1 - xbar) * (0 - ybar)
-        + ny * (0 - xbar) * (1 - ybar)
-        + nn * (0 - xbar) * (0 - ybar)
-        + xy * (1 - xbar) * (1 - ybar)
+        xn * (1.0 - xbar) * (0.0 - ybar)
+        + ny * (0.0 - xbar) * (1.0 - ybar)
+        + nn * (0.0 - xbar) * (0.0 - ybar)
+        + xy * (1.0 - xbar) * (1.0 - ybar)
     )
     # After mean shifting, the length is x dot x, so in 1 positions, it's 1-mu
     # squared, in 0 positions it's 0-mu squared. Then sqrt each dot-product.
@@ -114,7 +141,7 @@ def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> floa
         + ((0.0 - ybar) * (0.0 - ybar) * (xn + nn))     # 0
     )
 
-    return 1 - (top / bottom)
+    return 1.0 - (top / bottom)
 
 # TODO: below here updated to @numba.jit without checking anything!
 

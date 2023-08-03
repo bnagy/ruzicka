@@ -26,7 +26,7 @@ from typing import Collection, Callable
 from sklearn.neighbors import NearestCentroid
 
 # import the pairwise distance functions:
-from .test_metrics import minmax, manhattan, euclidean, common_ngrams, cosine
+from .test_metrics import minmax, manhattan, euclidean, common_ngrams, cosine, nini
 
 CPU_METRICS: dict[str, Callable] = {
     "manhattan": manhattan,
@@ -34,6 +34,7 @@ CPU_METRICS: dict[str, Callable] = {
     "minmax": minmax,
     "cng": common_ngrams,
     "cosine": cosine,
+    "nini": nini,
 }
 
 logger = logging.getLogger("ruzicka")
@@ -75,6 +76,7 @@ class Order2Verifier:
                 + minmax
                 + manhattan
                 + euclidean
+                + nini
 
         base, str
             Indicates whether to use an instance-based or profile-based approach

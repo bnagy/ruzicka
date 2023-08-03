@@ -18,6 +18,7 @@ described in e.g.:
 
 import random
 import logging
+import numba
 
 import numpy as np
 import numpy.typing as npt
@@ -208,15 +209,17 @@ class Order2Verifier:
         """
 
         # use entire feature space if necessary:
-        if len(rnd_feature_idxs) == 0:  # use entire feature space
-            rnd_feature_idxs = np.array(range(len(test_vector)), dtype="int")
+        if rnd_feature_idxs.size == 0:  # use entire feature space
+            rnd_feature_idxs = np.array(range(test_vector.size), dtype="int")
 
         # calculate distance to nearest neighbour for the
         # target author (which potentially has only 1 item):
-        min_dist = float("inf")
-        for idx in range(len(self.train_y)):
+        min_dist: float = 1000.0
+        for idx in range(self.train_y.size):
             if self.train_y[idx] == target_int:
-                d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
+                d = self.metric_fn(
+                    self.train_X[idx][rnd_feature_idxs], test_vector[rnd_feature_idxs]
+                )
                 if d < min_dist:
                     min_dist = d
 
@@ -273,20 +276,22 @@ class Order2Verifier:
         """
 
         # use entire feature space if necessary:
-        if len(rnd_feature_idxs) == 0:
-            rnd_feature_idxs = np.array(range(len(test_vector)), dtype="int")
+        if rnd_feature_idxs.size == 0:
+            rnd_feature_idxs = np.array(range(test_vector.size), dtype="int")
 
         # calculate distance to nearest neighbour for any
         # author whom is NOT the target author
         non_target_idxs = [
-            i for i in range(len(self.train_y)) if self.train_y[i] != target_int
+            i for i in range(self.train_y.size) if self.train_y[i] != target_int
         ]
 
         # randomly pick a subset of imposters:
         random.shuffle(non_target_idxs)
         dists = np.zeros(len(non_target_idxs[:nb_imposters]), dtype=np.float64)
         for i, idx in enumerate(non_target_idxs[:nb_imposters]):
-            dists[i] = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
+            dists[i] = self.metric_fn(
+                self.train_X[idx][rnd_feature_idxs], test_vector[rnd_feature_idxs]
+            )
         return np.sort(dists)
 
     def predict_proba(

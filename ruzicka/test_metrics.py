@@ -71,7 +71,7 @@ def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
 
 
 @numba.jit(nopython=True)
-def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> float:
+def nini(x, y: NDArray[np.float64]) -> float:
     """
     Calculates the pairwise "Nini" distance between two vectors, but limited to
     the `rnd_feature_idxs` specified. This is defined as 1 - phi where phi is
@@ -106,7 +106,7 @@ def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> floa
     # stuff so we can do everything in one pass.
     xn, ny, xy, nn = 0.0, 0.0, 0.0, 0.0
     assert x.shape == y.shape
-    for i in rnd_feature_idxs:
+    for i in range(x.shape[0]):
         if x[i] > 0.0:
             if y[i] > 0.0:
                 xy += 1.0

@@ -55,7 +55,6 @@ def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
 
     mins, maxs = 0.0, 0.0
     a, b = 0.0, 0.0
-
     for i in rnd_feature_idxs:
         a, b = x[i], y[i]
 
@@ -70,13 +69,15 @@ def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
         return 1.0 - (mins / maxs)  # avoid zero division
     return 0.0
 
+
 @numba.jit(nopython=True)
 def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> float:
     """
     Calculates the pairwise "Nini" distance between two vectors, but limited to
     the `rnd_feature_idxs` specified. This is defined as 1 - phi where phi is
     Pearson's Correlation applied to binary indicator vectors (all non-zero
-    frequencies are converted to 1). The range of the distance is [0,2].
+    frequencies are converted to 1). The range of the distance is [0,2], and the
+    recommended application is to large character n-grams (5 or more).
 
     Parameters
     ----------
@@ -98,15 +99,16 @@ def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> floa
       Analysis (Elements in Forensic Linguistics). Cambridge: Cambridge
       University Press. doi:10.1017/9781108974851
     """
-        
+
     # The 'Nini' distance is the Pearson's-r when the vectors are converted to
     # binary indicators, i.e. any value > 0 = 1. This is the same as the cosine
     # distance for centered (binary) vectors. We do some reasonably nasty
     # stuff so we can do everything in one pass.
     xn, ny, xy, nn = 0.0, 0.0, 0.0, 0.0
+    assert x.shape == y.shape
     for i in rnd_feature_idxs:
         if x[i] > 0.0:
-            if y[i] > 0:
+            if y[i] > 0.0:
                 xy += 1.0
             else:
                 xn += 1.0
@@ -121,6 +123,7 @@ def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> floa
     xbar = (xn + xy) / len
     ybar = (ny + xy) / len
 
+    # Cosine is <x,y> / ||x||*||y||
     # x dot y. For every position (xn) where x is set and y isn't, those
     # positions get 1-xbar * 0-ybar, etc.
     top = (
@@ -133,17 +136,19 @@ def nini(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]) -> floa
     # squared, in 0 positions it's 0-mu squared. Then sqrt each dot-product.
     bottom = math.sqrt(  # sum x_i squared
         (
-            (1.0 - xbar) * (1.0 - xbar) * (xn + xy)     # 1
-            + (0.0 - xbar) * (0.0 - xbar) * (ny + nn)   # 0
+            (1.0 - xbar) * (1.0 - xbar) * (xn + xy)  # 1
+            + (0.0 - xbar) * (0.0 - xbar) * (ny + nn)  # 0
         )
     ) * math.sqrt(  # sum y_i squared
-        ((1.0 - ybar) * (1.0 - ybar) * (ny + xy))       # 1
-        + ((0.0 - ybar) * (0.0 - ybar) * (xn + nn))     # 0
+        ((1.0 - ybar) * (1.0 - ybar) * (ny + xy))  # 1
+        + ((0.0 - ybar) * (0.0 - ybar) * (xn + nn))  # 0
     )
 
     return 1.0 - (top / bottom)
 
+
 # TODO: below here updated to @numba.jit without checking anything!
+
 
 @numba.jit(nopython=True)
 def manhattan(x, y, rnd_feature_idxs):
@@ -237,7 +242,6 @@ def common_ngrams2(x, y, rnd_feature_idxs):
         if y[i] > 0.0:  # only target text (works best):
             z = (x[i] + y[i]) / 2.0
             z = (x[i] - y[i]) / z
-
             diff += z * z
 
     return diff
@@ -253,7 +257,6 @@ def common_ngrams(x, y, rnd_feature_idxs):
         # if x[i] > 0.0: # take intersection ngrams
         if y[i] > 0.0:  # only target text (works best):
             z = (2.0 * (x[i] - y[i])) / (x[i] + y[i])
-
             diff += z * z
 
     return diff
@@ -265,7 +268,6 @@ def cosine(x, y, rnd_feature_idxs):
 
     for i in rnd_feature_idxs:
         numerator += x[i] * y[i]
-
         denom_a += x[i] * x[i]
         denom_b += y[i] * y[i]
 

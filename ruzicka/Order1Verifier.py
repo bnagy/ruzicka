@@ -140,7 +140,7 @@ class Order1Verifier:
         # NDArray works (NOT a python list).
         idxs = np.array(range(self.train_X.shape[0]))
         for i, j in combinations(range(nb_items), 2):
-            distances.append(self.metric_fn(self.train_X[i], self.train_X[j], idxs))
+            distances.append(self.metric_fn(self.train_X[i], self.train_X[j]))
 
         # [don't] fit a 0-1 scaler on the distances:
         distances = np.array(distances, dtype="float32").transpose()
@@ -198,14 +198,15 @@ class Order1Verifier:
 
         # calculate distance to nearest neighbour for the
         # target author (which potentially has only 1 item):
-        distance = float("inf")
-        for idx in range(len(self.train_y)):
+        min_dist = float("inf")
+        tv = test_vector[rnd_feature_idxs]
+        for idx in range(self.train_y.size):
             if self.train_y[idx] == target_int:
-                d = self.metric_fn(self.train_X[idx], test_vector, rnd_feature_idxs)
-                if d < distance:
-                    distance = d
+                d = self.metric_fn(self.train_X[idx][rnd_feature_idxs], tv)
+                if d < min_dist:
+                    min_dist = d
 
-        return distance
+        return min_dist
 
     def predict_proba(
         self, test_X: Collection[Collection[float]], test_y: Collection[int]

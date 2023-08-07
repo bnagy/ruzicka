@@ -20,7 +20,7 @@ TARGET = "cpu"
 
 
 @numba.jit(nopython=True)
-def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
+def minmax(x, y: NDArray[np.float64]):
     """
     Calculates the pairwise "minmax" distance between
     two vectors, but limited to the `rnd_feature_idxs`
@@ -33,9 +33,6 @@ def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
         The first vector of the vector pair.
     y: float array
         The second vector of the vector pair.
-    rnd_feature_idxs: int array
-        The list of indexes along which the distance
-        has to be calculated (useful for bootstrapping).
 
     Returns
     ----------
@@ -52,10 +49,10 @@ def minmax(x, y: NDArray[np.float64], rnd_feature_idxs: NDArray[np.int32]):
     """
 
     # NB - vectorising this with np.minimum etc is slower.
-
+    assert x.shape == y.shape
     mins, maxs = 0.0, 0.0
     a, b = 0.0, 0.0
-    for i in rnd_feature_idxs:
+    for i in range(x.shape[0]):
         a, b = x[i], y[i]
 
         if a >= b:
@@ -85,9 +82,6 @@ def nini(x, y: NDArray[np.float64]) -> float:
         The first vector of the vector pair.
     y: float array
         The second vector of the vector pair.
-    rnd_feature_idxs: int array
-        The list of indexes along which the distance has to be calculated
-        (useful for bootstrapping).
 
     Returns
     ----------
@@ -104,25 +98,24 @@ def nini(x, y: NDArray[np.float64]) -> float:
     # binary indicators, i.e. any value > 0 = 1. This is the same as the cosine
     # distance for centered (binary) vectors. We do some reasonably nasty
     # stuff so we can do everything in one pass.
-    xn, ny, xy, nn = 0.0, 0.0, 0.0, 0.0
+    xn, ny, xy, nn = 0, 0, 0, 0  # faster to keep these as ints here
     assert x.shape == y.shape
     for i in range(x.shape[0]):
         if x[i] > 0.0:
             if y[i] > 0.0:
-                xy += 1.0
+                xy += 1
             else:
-                xn += 1.0
+                xn += 1
         else:  # x = 0
             if y[i] > 0.0:
-                ny += 1.0
+                ny += 1
             else:
-                nn += 1.0
+                nn += 1
 
-    # means are the total bits set / vector length
+    # means are the total bits set / vector length. Float conversion is auto in py3.
     len = xn + xy + ny + nn
     xbar = (xn + xy) / len
     ybar = (ny + xy) / len
-
     # Cosine is <x,y> / ||x||*||y||
     # x dot y. For every position (xn) where x is set and y isn't, those
     # positions get 1-xbar * 0-ybar, etc.
@@ -151,7 +144,7 @@ def nini(x, y: NDArray[np.float64]) -> float:
 
 
 @numba.jit(nopython=True)
-def manhattan(x, y, rnd_feature_idxs):
+def manhattan(x, y: NDArray[np.float64]) -> float:
     """
     Calculates the conventional pairwise Manhattan city
     block distance between two vectors, but limited to
@@ -163,9 +156,6 @@ def manhattan(x, y, rnd_feature_idxs):
         The first vector of the vector pair.
     y: float array
         The second vector of the vector pair.
-    rnd_feature_idxs: int array
-        The list of indexes along which the distance
-        has to be calculated (useful for bootstrapping).
 
     Returns
     ----------
@@ -181,7 +171,8 @@ def manhattan(x, y, rnd_feature_idxs):
 
     diff, z = 0.0, 0.0
 
-    for i in rnd_feature_idxs:
+    assert x.shape == y.shape
+    for i in range(x.shape[0]):
         z = x[i] - y[i]
 
         if z < 0.0:
@@ -193,7 +184,7 @@ def manhattan(x, y, rnd_feature_idxs):
 
 
 @numba.jit(nopython=True)
-def euclidean(x, y, rnd_feature_idxs):
+def euclidean(x, y: NDArray[np.float64]) -> float:
     """
     Calculates the conventional pairwise Euclidean
     distance between two vectors, but limited to
@@ -205,9 +196,6 @@ def euclidean(x, y, rnd_feature_idxs):
         The first vector of the vector pair.
     y: float array
         The second vector of the vector pair.
-    rnd_feature_idxs: int array
-        The list of indexes along which the distance
-        has to be calculated (useful for bootstrapping).
 
     Returns
     ----------
@@ -222,7 +210,8 @@ def euclidean(x, y, rnd_feature_idxs):
     """
     diff, z = 0.0, 0.0
 
-    for i in rnd_feature_idxs:
+    assert x.shape == y.shape
+    for i in range(x.shape[0]):
         z = x[i] - y[i]
         diff += z * z
 
@@ -230,10 +219,11 @@ def euclidean(x, y, rnd_feature_idxs):
 
 
 @numba.jit(nopython=True)
-def common_ngrams2(x, y, rnd_feature_idxs):
+def common_ngrams2(x, y: NDArray[np.float64]) -> float:
     diff = 0.0
 
-    for i in rnd_feature_idxs:
+    assert x.shape == y.shape
+    for i in range(x.shape[0]):
         z = 0.0
 
         # if x[i] > 0.0 or y[i] > 0.0: # take union ngrams (slightly better)
@@ -248,10 +238,11 @@ def common_ngrams2(x, y, rnd_feature_idxs):
 
 
 @numba.jit(nopython=True)
-def common_ngrams(x, y, rnd_feature_idxs):
+def common_ngrams(x, y: NDArray[np.float64]) -> float:
     diff, z = 0.0, 0.0
 
-    for i in rnd_feature_idxs:
+    assert x.shape == y.shape
+    for i in range(x.shape[0]):
         # if x[i] > 0.0 or y[i] > 0.0: # take union ngrams (slightly better)
         # if x[i] > 0.0 or y[i] > 0.0: # take intersection ngrams
         # if x[i] > 0.0: # take intersection ngrams
@@ -263,10 +254,11 @@ def common_ngrams(x, y, rnd_feature_idxs):
 
 
 @numba.jit(nopython=True)
-def cosine(x, y, rnd_feature_idxs):
+def cosine(x, y: NDArray[np.float64]) -> float:
     numerator, denom_a, denom_b = 0.0, 0.0, 0.0
 
-    for i in rnd_feature_idxs:
+    assert x.shape == y.shape
+    for i in range(x.shape[0]):
         numerator += x[i] * y[i]
         denom_a += x[i] * x[i]
         denom_b += y[i] * y[i]

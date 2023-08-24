@@ -70,11 +70,11 @@ def minmax(x, y: NDArray[np.float64]):
 @numba.jit(nopython=True)
 def nini(x, y: NDArray[np.float64]) -> float:
     """
-    Calculates the pairwise "Nini" distance between two vectors, but limited to
-    the `rnd_feature_idxs` specified. This is defined as 1 - phi where phi is
-    Pearson's Correlation applied to binary indicator vectors (all non-zero
-    frequencies are converted to 1). The range of the distance is [0,2], and the
-    recommended application is to large character n-grams (5 or more).
+    Calculates the pairwise "Nini" distance between two vectors. This is defined
+    as 1 - phi where phi is Pearson's Correlation applied to binary indicator
+    vectors (all non-zero frequencies are converted to 1). The range of the
+    distance is [0,2], and the recommended application is to large character
+    n-grams (5 or more).
 
     Parameters
     ----------
@@ -137,11 +137,10 @@ def nini(x, y: NDArray[np.float64]) -> float:
         + ((0.0 - ybar) * (0.0 - ybar) * (xn + nn))  # 0
     )
 
+    if bottom==0.0:
+        return 2.0
+    
     return 1.0 - (top / bottom)
-
-
-# TODO: below here updated to @numba.jit without checking anything!
-
 
 @numba.jit(nopython=True)
 def manhattan(x, y: NDArray[np.float64]) -> float:

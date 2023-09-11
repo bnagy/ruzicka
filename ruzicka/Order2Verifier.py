@@ -154,6 +154,7 @@ class Order2Verifier:
 
         """
 
+        logger.info(f"Fitting on {len(y)} documents in {self.base} mode...")
         if self.base == "instance":
             self.train_X = np.array(X, dtype="float")
             self.train_y = np.array(y, dtype="int")
@@ -378,18 +379,12 @@ class Order2Verifier:
                     distances.append(0.0)
 
         else:  # bootstrapped, imposter-based, verification:
-            cnt = 0
+            logger.info(f"Predicting on {len(test_y)} documents")
             for test_vector, target_int in zip(
                 # we accept Collection, but use NDArrays internally
                 np.array(test_X, dtype="float64"),
                 np.array(test_y, dtype="int"),
             ):
-                cnt += 1
-                if cnt % 10 == 0:
-                    logger.info(
-                        f"# test documents processed: {cnt} out of {len(test_y)}"
-                    )
-
                 bootstrap_score = 0.0
                 for i in range(self.nb_bootstrap_iter):
                     # select random features:

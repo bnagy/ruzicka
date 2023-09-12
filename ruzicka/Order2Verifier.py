@@ -170,7 +170,7 @@ class Order2Verifier:
 
     def _dist_closest_target(
         self,
-        test_vector: Collection[float],
+        test_vector: npt.NDArray[np.float64],
         target_int: int,
         rnd_feature_idxs: npt.NDArray[np.int32] = np.array([], dtype="int32"),
     ) -> float:

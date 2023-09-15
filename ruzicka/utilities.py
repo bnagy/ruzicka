@@ -10,12 +10,15 @@ import codecs
 import glob
 import os
 import sys
-from collections import Counter
+import logging
 
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 
 from .vectorization import Vectorizer
+from .evaluation import pan_metrics
+
+logger = logging.getLogger("ruzicka")
 
 
 def load_pan_dataset(directory, ext="txt", encoding="utf8"):
@@ -271,3 +274,73 @@ def binarize(scores):
         elif sc > 0.5:
             scs.append("Y")
     return scs
+
+
+# Kestemont flavoured GI relies on 'fitting' the score shifting to optimise the
+# combination of C@1 accuracy and the AUC score. However, to calculate the AUC
+# we need an idea of true negatives (correctly identifying that the sample does
+# not match the alleged label). This method simple takes the X, y data and
+# appends a copy of X where the label is incorrect (uniformly random untrue
+# label)
+
+
+def make_up_lies(X, y):
+    lies_labels = []
+    n_labels = max(y) + 1
+    for lab in y:
+        while True:
+            r = np.random.randint(n_labels)
+            if r != lab:
+                lies_labels.append(r)
+                break
+    ret_X = np.concatenate([X, X.copy()])
+    ret_y = np.concatenate([y, lies_labels])
+    ground_truth = np.concatenate([[1.0] * len(X), [0.0] * len(X)])
+    return (ret_X, ret_y, ground_truth)
+
+
+def benchmark_imposters(X, y, splitter, vectorizer, verifier, shifter):
+    accs = []
+    c_at_1s = []
+    logger.info(
+        f"Starting benchmark: {splitter.n_splits} splits, test size {splitter.test_size:.0%}"
+    )
+    for i, (train_index, test_index) in enumerate(splitter.split(X, y)):
+        train_X = vectorizer.fit_transform(X[train_index], y[train_index])
+        verifier.fit(train_X, y[train_index])
+        test_X_raw = vectorizer.transform(X[test_index])
+        test_X, test_y, test_gt = make_up_lies(test_X_raw, y[test_index])
+        test_scores = verifier.predict_proba(test_X, test_y, nb_imposters=30)
+        test_scores = shifter.transform(test_scores)
+        dev_acc_score, dev_auc_score, dev_c_at_1_score = pan_metrics(
+            prediction_scores=test_scores, ground_truth_scores=test_gt
+        )
+        logger.info(
+            f"Accuracy: {dev_acc_score:.2%} AUC: {dev_auc_score:.2%}"
+            f" c@1: {dev_c_at_1_score:.2%} AUC x c@1: {dev_auc_score * dev_c_at_1_score:.2%}"
+        )
+        accs.append(dev_acc_score)
+        c_at_1s.append(dev_c_at_1_score)
+    return (accs, c_at_1s)
+
+
+def fit_shifter(
+    X,
+    y,
+    vectorizer,
+    verifier,
+    shifter,
+    test_size=0.2,
+):
+    logger.info(f"Fitting the provided score shifter on a {test_size*100}% sample")
+    splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size)
+    for i, (train_index, test_index) in enumerate(splitter.split(X, y)):
+        train_X = vectorizer.fit_transform(X[train_index], y[train_index])
+        verifier.fit(train_X, y[train_index])
+        test_X_raw = vectorizer.transform(X[test_index])
+        logger.info("Running verifier on sub-sample")
+        test_X, test_y, test_gt = make_up_lies(test_X_raw, y[test_index])
+        test_scores = verifier.predict_proba(test_X, test_y, nb_imposters=30)
+        logger.info(f"Actually fitting...")
+        shifter.fit(predicted_scores=test_scores, ground_truth_scores=test_gt)
+    return shifter

@@ -3,6 +3,7 @@
 
 from itertools import permutations
 from typing import Collection
+from typing_extensions import Self
 import numpy as np
 import warnings
 
@@ -148,7 +149,31 @@ class ScoreShifter:
         self.grid_size = grid_size
         self.fitted: bool = False
 
-    def fit(self, predicted_scores, ground_truth_scores: Collection[float]):
+    def manual_fit(self, p1, p2: float) -> Self:
+        """
+        Manually fits the score shifter.
+
+        Parameters
+        ----------
+
+        p1, p2: float in [0,1]
+            Values between p1 and p2 will be coerced to 0.5
+
+        Returns
+        -------
+
+        ScoreShifter
+
+        """
+        if 0 <= p1 <= p2 <= 1:
+            self.optimal_p1 = p1
+            self.optimal_p2 = p2
+        else:
+            raise ValueError("Bad values. Need 0 <= p1 <= p2 <= 1")
+        self.fitted = True
+        return self
+
+    def fit(self, predicted_scores, ground_truth_scores: Collection[float]) -> Self:
         """
         Fits the score shifter on the (development) scores for
         a data set, by searching the optimal `p1` and `p2` (in terms
@@ -163,6 +188,11 @@ class ScoreShifter:
         ground_truth_scores : array [n_problems]
             The gold annotations provided for each problem.
             Will typically be `0` or `1`.
+
+        Returns
+        -------
+
+        ScoreShifter
 
         """
 

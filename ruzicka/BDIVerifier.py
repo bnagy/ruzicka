@@ -385,7 +385,7 @@ class BDIVerifier:
         ----------
 
         After the run, the full set of distance arrays for each sample are
-        available in +_dist_arrays+
+        available in `_dist_arrays`
 
         """
         if not self.fitted:

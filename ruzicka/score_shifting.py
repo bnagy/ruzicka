@@ -89,11 +89,30 @@ def correct_scores(
             "Warning: scores are expected to be in [0,1], shifting may not work properly."
         )
     new_scores = []
+    # BN rewrite 22/1/24
+    # old code was this:
+    # if score <= p1:
+    #     new_scores.append(rescale(score, min(scores), max(scores), 0.0, p1))
+    # elif score >= p2:
+    #     new_scores.append(rescale(score, min(scores), max(scores), p2, 1.0))
+
+    # My concern is that sometimes the fitted p2 is below 0.5, or p1 is above
+    # 0.5, which can lead to scaled scores being on the wrong side of the 0.5
+    # mark that is used by the accuracy metrics, which seems weird.
+    #
+    # This approach makes no real attempt to provide a 'true' probability (maybe
+    # some logistic regression would work for that) but instead uniformly
+    # rescales 'no' (< p1) to [0,0.5), 'yes' (> p2) to (0.5,1] and the rest to exactly
+    # 0.5.
     for score in scores:
         if score <= p1:
-            new_scores.append(rescale(score, min(scores), max(scores), 0.0, p1))
+            new_scores.append(
+                rescale(score, orig_min=0, orig_max=p1, new_min=0.0, new_max=0.499)
+            )
         elif score >= p2:
-            new_scores.append(rescale(score, min(scores), max(scores), p2, 1.0))
+            new_scores.append(
+                rescale(score, orig_min=p2, orig_max=1, new_min=0.501, new_max=1.0)
+            )
         else:
             new_scores.append(0.5)
     return new_scores

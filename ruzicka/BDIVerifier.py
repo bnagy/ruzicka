@@ -319,11 +319,10 @@ class BDIVerifier:
                             # them. If we abort early then those entries would
                             # have weirdly low distances.
                             d += (top_out[-1] - top_in[-1]) / (nn + 1)
-                            # break
 
                     differences.append(d)
                 else:
-                    # should be impossible
+                    # should be impossible since we check in the constructor
                     raise ValueError(
                         f"Unsupported method {self.method}, valid are: random, closest, ranked"
                     )
@@ -351,7 +350,7 @@ class BDIVerifier:
         number of which is specified by `nb_imposters`.
 
         We apply the normal verification method, using self.nb_bootstrap_iter
-        iterations. In this case, the re- turned probabilities represent the
+        iterations. In this case, the returned probabilities represent the
         proportions of bootstraps in which the target_author yieled a closer
         neighbour, than any other of the randomly sampled imposter authors.
 
@@ -393,6 +392,7 @@ class BDIVerifier:
 
         dist_arrays = []
         logger.info(f"Predicting on {len(test_y)} documents")
+        # we accept collections but coerce to NDArray internally
         for vec, candidate_int in zip(np.array(test_X), np.array(test_y)):
             dist_arrays.append(
                 self._bootstrap_imposters(vec, candidate_int, nb_imposters)

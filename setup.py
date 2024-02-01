@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name="Ruzicka",
-    version="0.0.6",
+    version="1.0.0",
     author="Ben Nagy",
     packages=["ruzicka"],
     license="MIT",

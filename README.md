@@ -54,6 +54,7 @@ Most of the original Kestemont examples and bootstrap hypothesis testing framewo
 + scipy
 + scikit-learn
 + numba
++ typing_extensions
 
 
 

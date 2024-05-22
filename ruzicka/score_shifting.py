@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from itertools import permutations
-from typing import Collection
+from typing import Collection, Callable
 from typing_extensions import Self
 import numpy as np
 import warnings
@@ -118,6 +118,10 @@ def correct_scores(
     return new_scores
 
 
+def _auc_c_at_1(predicted, gt: Collection[float]) -> float:
+    return auc(predicted, gt) * c_at_1(predicted, gt)
+
+
 class ScoreShifter:
     """
 
@@ -192,21 +196,28 @@ class ScoreShifter:
         self.fitted = True
         return self
 
-    def fit(self, predicted_scores, ground_truth_scores: Collection[float]) -> Self:
+    def fit(
+        self,
+        predicted_scores,
+        ground_truth_scores: Collection[float],
+        obj_func: Callable[[Collection[float], Collection[float]], float] = _auc_c_at_1,
+    ) -> Self:
         """
-        Fits the score shifter on the (development) scores for
-        a data set, by searching the optimal `p1` and `p2` (in terms
-        of AUC x c@1) through a stepwise grid search.
+        Fits the score shifter on the (development) scores for a data set, by searching the optimal
+        `p1` and `p2` (in terms of AUC x c@1) through a stepwise grid search.
 
         Parameters
         ----------
         prediction_scores : array [n_problems]
-            The predictions outputted by a verification system.
-            Assumes `0 >= prediction <=1`.
+            The predictions outputted by a verification system. Assumes `0 >= prediction <=1`.
 
         ground_truth_scores : array [n_problems]
-            The gold annotations provided for each problem.
-            Will typically be `0` or `1`.
+            The gold annotations provided for each problem. Will typically be `0` or `1`.
+
+        obj_func: Callable[[Collection[float],Collection[float], float]
+            The objective function used for optimisation. Must take as parameters `predicted_scores`
+            and `ground_truth_scores` (in that order). p1 and p2 will be fitted to maximise this
+            function.
 
         Returns
         -------
@@ -222,9 +233,7 @@ class ScoreShifter:
         nb_thresholds = thresholds.shape[0]
 
         # intialize score containers:
-        both_scores = np.zeros((nb_thresholds, nb_thresholds))
-        auc_scores = both_scores.copy()
-        c_at_1_scores = both_scores.copy()
+        objective_scores = np.zeros((nb_thresholds, nb_thresholds))
 
         # iterate over combinations:
         gt = np.array(ground_truth_scores)
@@ -233,15 +242,11 @@ class ScoreShifter:
 
             if (p1 <= p2) and (p2 - p1 >= self.min_spread):  # ensure p1 <= p2!
                 corrected_scores = np.array(correct_scores(predicted_scores, p1, p2))
-                auc_score = auc(corrected_scores, gt)
-                c_at_1_score = c_at_1(corrected_scores, gt)
-                auc_scores[i][j] = auc_score
-                c_at_1_scores[i][j] = c_at_1_score
-                both_scores[i][j] = auc_score * c_at_1_score
+                objective_scores[i][j] = obj_func(corrected_scores, ground_truth_scores)
 
         # find 2D optimum:
         opt_p1_idx, opt_p2_idx = np.unravel_index(
-            both_scores.argmax(), both_scores.shape
+            objective_scores.argmax(), objective_scores.shape
         )
         self.optimal_p1 = thresholds[opt_p1_idx]
         self.optimal_p2 = thresholds[opt_p2_idx]
@@ -249,9 +254,8 @@ class ScoreShifter:
         # print some info:
         logger.info(f"p1 for optimal combo: {self.optimal_p1:.3f}")
         logger.info(f"p2 for optimal combo: {self.optimal_p2:.3f}")
-        logger.info(f"AUC for optimal combo: {auc_scores[opt_p1_idx][opt_p2_idx]:.2%}")
         logger.info(
-            f"c@1 for optimal combo: {c_at_1_scores[opt_p1_idx][opt_p2_idx]:.2%}"
+            f"Objective function result for optimal combo: {objective_scores[opt_p1_idx][opt_p2_idx]:.2%}"
         )
 
         self.fitted = True

@@ -143,7 +143,7 @@ class BDIVerifier:
         self.fitted = True
 
     def _balanced_subsample(
-        self, y: pd.Series, size: int = 0, rng: np.random.Generator = None
+        self, y: pd.Series, rng: np.random.Generator, size: int = 0
     ) -> list[int]:
         """
         From a list of classes (as ints), return a random subsample that is
@@ -164,7 +164,7 @@ class BDIVerifier:
             number of samples to take from each class. If size is 0 then the
             size of the smallest class is used.
 
-        rng: np.random.Generator default=self.rnd
+        rng: np.random.Generator
             rng to use for sample
 
         Returns
@@ -175,8 +175,6 @@ class BDIVerifier:
         """
         subsample = []
 
-        if rng is None:
-            rng = self.rnd
         if size == 0:
             n_smp = y.value_counts().min()
         else:
@@ -220,8 +218,8 @@ class BDIVerifier:
         candidates = self.train_X[(self.train_y == target_int).nonzero()]
         others = self.train_X[(self.train_y != target_int).nonzero()]
         differences: list[float] = []
-        cand_samps: npt.NDArray[np.float64] = []
-        other_samps: npt.NDArray[np.float64] = []
+        cand_samps: npt.NDArray[np.float64] = np.array([], dtype="float64")
+        other_samps: npt.NDArray[np.float64] = np.array([], dtype="float64")
         pdy = pd.Series(self.train_y)
         if self.method == "random":
             # choose n random row indices with replacement, all columns. This will

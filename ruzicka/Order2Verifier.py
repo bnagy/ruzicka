@@ -16,7 +16,6 @@ described in e.g.:
 
 """
 
-import random
 import logging
 import numba
 
@@ -97,7 +96,7 @@ class Order2Verifier:
             the target author appears to be a test document's nearest neighbour
             among the imposters).
 
-        random_seed: int, default=1066
+        random_state: int, default=1066
             Integer used for seeding the random streams.
 
         rnd_prop: scalar, default=.5
@@ -110,8 +109,7 @@ class Order2Verifier:
         assert (rnd_prop > 0.0) and (rnd_prop < 1.0)
 
         # set rnd seeds:
-        random.seed(1066)
-        self.rnd = np.random.RandomState(random_state)
+        self.rnd = np.random.RandomState(seed=random_state)
 
         self.base = base
         self.rank = rank
@@ -286,7 +284,7 @@ class Order2Verifier:
         ]
 
         # randomly pick a subset of imposters:
-        random.shuffle(non_target_idxs)
+        self.rnd.shuffle(non_target_idxs)
         dists = np.zeros(len(non_target_idxs[:nb_imposters]), dtype=np.float64)
         tv = test_vector[rnd_feature_idxs]
         for i, idx in enumerate(non_target_idxs[:nb_imposters]):

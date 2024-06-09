@@ -80,19 +80,38 @@ class BDIVerifier:
                 + cng
                 + nini
 
-        nb_bootstrap_iter: int, default = 100
-            Indicates the number of bootstrap iterations to be used (e.g. 100).
-            If this evaluates to False, we run a naive version of the imposter
-            algorithm without bootstrapping; i.e. we simply check once whether
-            the target author appears to be a test document's nearest neighbour
-            among the imposters).
+        method: str
+            The bootstrapping method. Three are supported:
+                + random
+                    At each iteration select one candidate and one imposter and record the bootstrap
+                    difference. This method is hyper-regularising and probably underperforms for
+                    anything but huge candidate sets.
+                + ranked (default)
+                    At each iteration consider the top 3 distances from the sorted candidates and
+                    imposters. The ranked distances are multiplied by 1, 1/2 and 1/3. If there are
+                    fewer than three candidates, the last score (first or second) is repeated so
+                    that the distances will all be in the same scale of magnitude. Note that this is
+                    *different* to the Potha Stamatatos ranking modification.
+                + closest
+                    Considers only the closest candidate and closest imposter at each step. This is
+                    like the vanilla `Order2Verifier` without the Potha Stamatatos ranking
+                    modification.
 
-        random_seed: int, default = 1066
+        nb_bootstrap_iter: int, default = 100
+            Indicates the number of bootstrap iterations to be used (e.g. 100). If this evaluates to
+            False, we run a naive version of the imposter algorithm without bootstrapping; i.e. we
+            simply check once whether the target author appears to be a test document's nearest
+            neighbour among the imposters).
+
+        random_state: int, default = 1066
             Integer used for seeding the random streams.
 
         rnd_prop: scalar, default = 0.35
-            Float specifying the number of features to be randomly sampled in
-            each iteration.
+            Float specifying the number of features to be randomly sampled in each iteration.
+
+        balance: bool, default = False
+            If true, balances the entire dataset (before splitting into candidates and imposters)
+            down the the size of the smallest class at each bootstrap iteration.
         """
 
         # some sanity checks:
@@ -264,19 +283,6 @@ class BDIVerifier:
                     differences.append(out_dist - in_dist)
 
                 # compare the test vector to the closest in-sample and out-sample, then
-                # record the difference of distances (like vanilla Kestemont GI)
-                elif self.method == "closest":
-                    in_dists = [
-                        self.metric_fn(test_vec[ridx], cand_samp[ridx])
-                        for cand_samp in candidates
-                    ]
-                    out_dists = [
-                        self.metric_fn(test_vec[ridx], other_samp[ridx])
-                        for other_samp in others
-                    ]
-                    differences.append(min(out_dists) - min(in_dists))
-
-                # compare the test vector to the closest in-sample and out-sample, then
                 # record the scaled difference of distances for the smallest 3 (like
                 # Kestemont GI with Eder Boostrap Consensus Tree stye ranking)
                 elif self.method == "ranked":
@@ -306,7 +312,11 @@ class BDIVerifier:
                     top_in = heapq.nsmallest(3, in_dists)
                     top_out = heapq.nsmallest(3, out_dists)
                     d = 0
-                    for nn in range(3):
+                    if self.method == "closest":
+                        depth = 1
+                    else:
+                        depth = 3  # TODO: configurable?
+                    for nn in range(depth):
                         # smallest distances are unscaled, seccond is halved, etc
                         try:
                             d += (top_out[nn] - top_in[nn]) / (nn + 1)

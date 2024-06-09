@@ -285,7 +285,7 @@ class BDIVerifier:
                 # compare the test vector to the closest in-sample and out-sample, then
                 # record the scaled difference of distances for the smallest 3 (like
                 # Kestemont GI with Eder Boostrap Consensus Tree stye ranking)
-                elif self.method == "ranked":
+                elif self.method == "ranked" or self.method == "closest":
                     in_dists = [
                         self.metric_fn(test_vec[ridx], cand_samp[ridx])
                         for cand_samp in candidates

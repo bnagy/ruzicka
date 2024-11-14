@@ -46,6 +46,8 @@ The package additionally offers a number of useful implementations of common vec
 
 Most of the original Kestemont examples and bootstrap hypothesis testing framework has been removed. You can find that at the original repo. You can still follow the original [Quickstart notebook](code/Quickstart.ipynb) which covers the basic use of the vectorisation tools, and the O1 and O2 Verifiers.
 
+For BDI, there is a new [tutorial](code/QuickstartBDI.ipynb) which doesn't focus on evaluation, but just runs through a worked verification example. This is probably easier for new users to digest.
+
 ## Dependencies
 
 `setup.py` should take care of them for you, but for the record:
